@@ -392,6 +392,7 @@ enum {
 	NOTIFY_HOST,
 	NOTIFY_DNS,
 	NOTIFY_DNS_SEARCH,
+	NOTIFY_DHCP4o6,
 	__NOTIFY_LAST
 };
 
@@ -413,6 +414,7 @@ static const struct blobmsg_policy notify_attr[__NOTIFY_LAST] = {
 	[NOTIFY_HOST] = { .name = "host", .type = BLOBMSG_TYPE_STRING },
 	[NOTIFY_DNS] = { .name = "dns", .type = BLOBMSG_TYPE_ARRAY },
 	[NOTIFY_DNS_SEARCH] = { .name = "dns_search", .type = BLOBMSG_TYPE_ARRAY },
+	[NOTIFY_DHCP4o6] = { .name = "dhcp4o6", .type = BLOBMSG_TYPE_ARRAY },
 };
 
 static int
@@ -483,6 +485,9 @@ proto_shell_update_link(struct proto_shell_state *state, struct blob_attr *data,
 
 	if ((cur = tb[NOTIFY_DNS_SEARCH]))
 		interface_add_dns_search_list(&iface->proto_ip, cur);
+
+	if ((cur = tb[NOTIFY_DHCP4o6]))
+		interface_add_dhcp4o6_server_list(&iface->proto_ip, cur);
 
 	if ((cur = tb[NOTIFY_DATA]))
 		proto_shell_parse_data(state->proto.iface, cur);

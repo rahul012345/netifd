@@ -75,6 +75,7 @@ struct interface_ip_settings {
 
 	struct vlist_simple_tree dns_servers;
 	struct vlist_simple_tree dns_search;
+	struct vlist_simple_tree dhcp4o6_servers;
 };
 
 struct interface_data {

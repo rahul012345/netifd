@@ -47,6 +47,7 @@ proto_init_update() {
 	PROTO_PREFIX6=
 	PROTO_DNS=
 	PROTO_DNS_SEARCH=
+	PROTO_DHCP4o6=
 	json_init
 	json_add_int action 0
 	[ -n "$ifname" -a "*" != "$ifname" ] && json_add_string "ifname" "$ifname"
@@ -94,6 +95,12 @@ proto_add_dns_search() {
 	local address="$1"
 
 	append PROTO_DNS_SEARCH "$address"
+}
+
+proto_add_dhcp4o6_server() {
+	local address="$1"
+
+	append PROTO_DHCP4o6 "$address"
 }
 
 proto_add_ipv4_address() {
@@ -254,6 +261,7 @@ proto_send_update() {
 	_proto_push_array "ip6prefix" "$PROTO_PREFIX6" _proto_push_string
 	_proto_push_array "dns" "$PROTO_DNS" _proto_push_string
 	_proto_push_array "dns_search" "$PROTO_DNS_SEARCH" _proto_push_string
+	_proto_push_array "dhcp4o6" "$PROTO_DHCP4o6" _proto_push_string
 	_proto_notify "$interface"
 }
 

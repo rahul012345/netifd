@@ -1026,13 +1026,59 @@ interface_add_dns_search_list(struct interface_ip_settings *ip, struct blob_attr
 	}
 }
 
+void
+interface_add_dhcp4o6_server(struct interface_ip_settings *ip, const char *str)
+{
+	struct dhcp4o6_server *s;
+
+    DPRINTF("Interface_add_dhcp4o6_server");
+	s = calloc(1, sizeof(*s));
+	if (!s)
+		return;
+
+	s->af = AF_INET;
+	if (inet_pton(s->af, str, &s->addr.in))
+		goto add;
+
+	s->af = AF_INET6;
+	if (inet_pton(s->af, str, &s->addr.in))
+		goto add;
+
+	free(s);
+	return;
+
+add:
+	D(INTERFACE, "Add IPv%c DHCP4o6 server: %s\n",
+	  s->af == AF_INET6 ? '6' : '4', str);
+	vlist_simple_add(&ip->dhcp4o6_servers, &s->node);
+}
+
+void
+interface_add_dhcp4o6_server_list(struct interface_ip_settings *ip, struct blob_attr *list)
+{
+	struct blob_attr *cur;
+	int rem;
+
+	blobmsg_for_each_attr(cur, list, rem) {
+		if (blobmsg_type(cur) != BLOBMSG_TYPE_STRING)
+			continue;
+
+		if (!blobmsg_check_attr(cur, NULL))
+			continue;
+
+		interface_add_dhcp4o6_server(ip, blobmsg_data(cur));
+	}
+}
+
 static void
 write_resolv_conf_entries(FILE *f, struct interface_ip_settings *ip)
 {
 	struct dns_server *s;
 	struct dns_search_domain *d;
+	struct dhcp4o6_server *h;
 	const char *str;
 	char buf[INET6_ADDRSTRLEN];
+	char buf_dhcp4o6[INET6_ADDRSTRLEN];
 
 	vlist_simple_for_each_element(&ip->dns_servers, s, node) {
 		str = inet_ntop(s->af, &s->addr, buf, sizeof(buf));
@@ -1044,6 +1090,14 @@ write_resolv_conf_entries(FILE *f, struct interface_ip_settings *ip)
 
 	vlist_simple_for_each_element(&ip->dns_search, d, node) {
 		fprintf(f, "search %s\n", d->name);
+	}
+
+	vlist_simple_for_each_element(&ip->dhcp4o6_servers, h, node) {
+		str = inet_ntop(h->af, &h->addr, buf_dhcp4o6, sizeof(buf_dhcp4o6));
+		if (!str)
+			continue;
+
+		fprintf(f, "dhcp4o6 %s\n", str);
 	}
 }
 
@@ -1069,8 +1123,10 @@ interface_write_resolv_conf(void)
 
 		if (vlist_simple_empty(&iface->proto_ip.dns_search) &&
 		    vlist_simple_empty(&iface->proto_ip.dns_servers) &&
+		    vlist_simple_empty(&iface->proto_ip.dhcp4o6_servers) &&
 			vlist_simple_empty(&iface->config_ip.dns_search) &&
-		    vlist_simple_empty(&iface->config_ip.dns_servers))
+		    vlist_simple_empty(&iface->config_ip.dns_servers) &&
+		    vlist_simple_empty(&iface->config_ip.dhcp4o6_servers))
 			continue;
 
 		fprintf(f, "# Interface %s\n", iface->name);
@@ -1161,6 +1217,7 @@ interface_ip_update_start(struct interface_ip_settings *ip)
 	if (ip != &ip->iface->config_ip) {
 		vlist_simple_update(&ip->dns_servers);
 		vlist_simple_update(&ip->dns_search);
+		vlist_simple_update(&ip->dhcp4o6_servers);
 	}
 	vlist_update(&ip->route);
 	vlist_update(&ip->addr);
@@ -1172,6 +1229,7 @@ interface_ip_update_complete(struct interface_ip_settings *ip)
 {
 	vlist_simple_flush(&ip->dns_servers);
 	vlist_simple_flush(&ip->dns_search);
+	vlist_simple_flush(&ip->dhcp4o6_servers);
 	vlist_flush(&ip->route);
 	vlist_flush(&ip->addr);
 	vlist_flush(&ip->prefix);
@@ -1185,6 +1243,7 @@ interface_ip_flush(struct interface_ip_settings *ip)
 		vlist_flush_all(&ip->iface->host_routes);
 	vlist_simple_flush_all(&ip->dns_servers);
 	vlist_simple_flush_all(&ip->dns_search);
+	vlist_simple_flush_all(&ip->dhcp4o6_servers);
 	vlist_flush_all(&ip->route);
 	vlist_flush_all(&ip->addr);
 	vlist_flush_all(&ip->prefix);
@@ -1197,6 +1256,7 @@ __interface_ip_init(struct interface_ip_settings *ip, struct interface *iface)
 	ip->enabled = true;
 	vlist_simple_init(&ip->dns_search, struct dns_search_domain, node);
 	vlist_simple_init(&ip->dns_servers, struct dns_server, node);
+	vlist_simple_init(&ip->dhcp4o6_servers, struct dhcp4o6_server, node);
 	vlist_init(&ip->route, route_cmp, interface_update_proto_route);
 	vlist_init(&ip->addr, addr_cmp, interface_update_proto_addr);
 	vlist_init(&ip->prefix, prefix_cmp, interface_update_prefix);

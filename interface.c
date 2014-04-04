@@ -41,6 +41,7 @@ enum {
 	IFACE_ATTR_IP6HINT,
 	IFACE_ATTR_IP4TABLE,
 	IFACE_ATTR_IP6TABLE,
+    IFACE_ATTR_DHCP4o6,
 	IFACE_ATTR_IP6CLASS,
 	IFACE_ATTR_DELEGATE,
 	IFACE_ATTR_MAX
@@ -60,6 +61,7 @@ static const struct blobmsg_policy iface_attrs[IFACE_ATTR_MAX] = {
 	[IFACE_ATTR_IP6HINT] = { .name = "ip6hint", .type = BLOBMSG_TYPE_STRING },
 	[IFACE_ATTR_IP4TABLE] = { .name = "ip4table", .type = BLOBMSG_TYPE_STRING },
 	[IFACE_ATTR_IP6TABLE] = { .name = "ip6table", .type = BLOBMSG_TYPE_STRING },
+	[IFACE_ATTR_DHCP4o6] = { .name = "dhcp4o6", .type = BLOBMSG_TYPE_ARRAY},
 	[IFACE_ATTR_IP6CLASS] = { .name = "ip6class", .type = BLOBMSG_TYPE_ARRAY },
 	[IFACE_ATTR_DELEGATE] = { .name = "delegate", .type = BLOBMSG_TYPE_BOOL },
 };
@@ -689,6 +691,9 @@ interface_alloc(const char *name, struct blob_attr *config)
 		if (!system_resolve_rt_table(blobmsg_data(cur), &iface->ip6table))
 			DPRINTF("Failed to resolve routing table: %s\n", (char *) blobmsg_data(cur));
 	}
+
+	if ((cur = tb[IFACE_ATTR_DHCP4o6]))
+		interface_add_dhcp4o6_server_list(&iface->config_ip, cur);
 
 	iface->proto_ip.no_delegation = !blobmsg_get_bool_default(tb[IFACE_ATTR_DELEGATE], true);
 

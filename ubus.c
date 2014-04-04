@@ -636,6 +636,24 @@ interface_ip_dump_dns_search_list(struct interface_ip_settings *ip,
 }
 
 static void
+interface_ip_dump_dhcp4o6_server_list(struct interface_ip_settings *ip,
+                                  bool enabled)
+{
+	struct dhcp4o6_server *dhcp4o6;
+	int buflen = 128;
+	char *buf;
+
+	vlist_simple_for_each_element(&ip->dhcp4o6_servers, dhcp4o6, node) {
+//		if (ip->no_dhcp4o6 == enabled)
+//			continue;
+
+		buf = blobmsg_alloc_string_buffer(&b, NULL, buflen);
+		inet_ntop(dhcp4o6->af, &dhcp4o6->addr, buf, buflen);
+		blobmsg_add_string_buffer(&b);
+	}
+}
+
+static void
 netifd_dump_status(struct interface *iface)
 {
 	struct interface_data *data;
@@ -710,6 +728,10 @@ netifd_dump_status(struct interface *iface)
 		interface_ip_dump_dns_search_list(&iface->config_ip, true);
 		interface_ip_dump_dns_search_list(&iface->proto_ip, true);
 		blobmsg_close_array(&b, a);
+		a = blobmsg_open_array(&b, "dhcp4o6-servers");
+		interface_ip_dump_dhcp4o6_server_list(&iface->config_ip, true);
+		interface_ip_dump_dhcp4o6_server_list(&iface->proto_ip, true);
+		blobmsg_close_array(&b, a);
 
 		inactive = blobmsg_open_table(&b, "inactive");
 		a = blobmsg_open_array(&b, "ipv4-address");
@@ -731,6 +753,10 @@ netifd_dump_status(struct interface *iface)
 		a = blobmsg_open_array(&b, "dns-search");
 		interface_ip_dump_dns_search_list(&iface->config_ip, false);
 		interface_ip_dump_dns_search_list(&iface->proto_ip, false);
+		blobmsg_close_array(&b, a);
+		a = blobmsg_open_array(&b, "dhcp4o6-servers");
+		interface_ip_dump_dhcp4o6_server_list(&iface->config_ip, false);
+		interface_ip_dump_dhcp4o6_server_list(&iface->proto_ip, false);
 		blobmsg_close_array(&b, a);
 		blobmsg_close_table(&b, inactive);
 	}
