@@ -1031,7 +1031,6 @@ interface_add_dhcp4o6_server(struct interface_ip_settings *ip, const char *str)
 {
 	struct dhcp4o6_server *s;
 
-    DPRINTF("Interface_add_dhcp4o6_server");
 	s = calloc(1, sizeof(*s));
 	if (!s)
 		return;
