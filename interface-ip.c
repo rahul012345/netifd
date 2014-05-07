@@ -18,6 +18,7 @@
 
 #include <limits.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 
 #include "netifd.h"
 #include "device.h"
@@ -399,6 +400,9 @@ route_cmp(const void *k1, const void *k2, void *ptr)
 	if (r1->sourcemask != r2->sourcemask)
 		return r1->sourcemask - r2->sourcemask;
 
+	if (r1->table != r2->table)
+		return r1->table - r2->table;
+
 	int maskcmp = memcmp(&r1->source, &r2->source, sizeof(r1->source));
 	if (maskcmp)
 		return maskcmp;
@@ -660,8 +664,8 @@ interface_set_prefix_address(struct device_prefix_assignment *assignment,
 		}
 
 		assignment->enabled = false;
-	} else if (add && (iface->state == IFS_UP || iface->state == IFS_SETUP)) {
-		system_add_address(l3_downlink, &addr);
+	} else if (add && (iface->state == IFS_UP || iface->state == IFS_SETUP) &&
+			!system_add_address(l3_downlink, &addr)) {
 		if (prefix->iface && !assignment->enabled) {
 			set_ip_source_policy(true, true, IPRULE_PRIORITY_REJECT, &addr.addr,
 					addr.mask, 0, iface, "unreachable");
@@ -1070,7 +1074,7 @@ interface_add_dhcp4o6_server_list(struct interface_ip_settings *ip, struct blob_
 }
 
 static void
-write_resolv_conf_entries(FILE *f, struct interface_ip_settings *ip)
+write_resolv_conf_entries(FILE *f, struct interface_ip_settings *ip, const char *dev)
 {
 	struct dns_server *s;
 	struct dns_search_domain *d;
@@ -1084,7 +1088,10 @@ write_resolv_conf_entries(FILE *f, struct interface_ip_settings *ip)
 		if (!str)
 			continue;
 
-		fprintf(f, "nameserver %s\n", str);
+		if (s->af == AF_INET6 && IN6_IS_ADDR_LINKLOCAL(&s->addr.in6))
+			fprintf(f, "nameserver %s%%%s\n", str, dev);
+		else
+			fprintf(f, "nameserver %s\n", str);
 	}
 
 	vlist_simple_for_each_element(&ip->dns_search, d, node) {
@@ -1129,9 +1136,9 @@ interface_write_resolv_conf(void)
 			continue;
 
 		fprintf(f, "# Interface %s\n", iface->name);
-		write_resolv_conf_entries(f, &iface->config_ip);
+		write_resolv_conf_entries(f, &iface->config_ip, iface->ifname);
 		if (!iface->proto_ip.no_dns)
-			write_resolv_conf_entries(f, &iface->proto_ip);
+			write_resolv_conf_entries(f, &iface->proto_ip, iface->ifname);
 	}
 	fflush(f);
 	rewind(f);

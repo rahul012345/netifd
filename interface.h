@@ -105,6 +105,7 @@ struct interface {
 	bool device_config;
 	bool enabled;
 	bool link_state;
+	bool force_link;
 	bool dynamic;
 
 	time_t start_time;

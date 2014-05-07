@@ -56,10 +56,14 @@ static void
 config_parse_interface(struct uci_section *s, bool alias)
 {
 	struct interface *iface;
-	const char *type = NULL;
+	const char *type = NULL, *disabled;
 	struct blob_attr *config;
 	struct device *dev;
 	bool bridge = false;
+
+	disabled = uci_lookup_option_string(uci_ctx, s, "disabled");
+	if (disabled && !strcmp(disabled, "1"))
+		return;
 
 	blob_buf_init(&b, 0);
 
@@ -190,6 +194,7 @@ config_init_package(const char *config)
 		ctx = uci_alloc_context();
 		uci_ctx = ctx;
 
+		ctx->flags &= ~UCI_FLAG_STRICT;
 		if (config_path)
 			uci_set_confdir(ctx, config_path);
 

@@ -147,12 +147,15 @@ netifd_add_dynamic(struct ubus_context *ctx, struct ubus_object *obj,
 		goto error;
 
 	interface_add(iface, config);
-	interface_set_dynamic(iface);
 
-	// need to look up the interface name again, in case of config update,
+	// need to look up the interface name again, in case of config update
+	// the pointer will have changed
 	iface = vlist_find(&interfaces, name, iface, node);
 	if (!iface)
 		return UBUS_STATUS_UNKNOWN_ERROR;
+
+	// Set interface as dynamic
+	interface_set_dynamic(iface);
 
 	dev = iface->main_dev.dev;
 	if (!dev || !dev->default_config)
@@ -668,7 +671,8 @@ netifd_dump_status(struct interface *iface)
 	if (iface->state == IFS_UP) {
 		time_t cur = system_get_rtime();
 		blobmsg_add_u32(&b, "uptime", cur - iface->start_time);
-		blobmsg_add_string(&b, "l3_device", iface->l3_dev.dev->ifname);
+		if (iface->l3_dev.dev)
+			blobmsg_add_string(&b, "l3_device", iface->l3_dev.dev->ifname);
 	}
 
 	if (iface->proto_handler)
